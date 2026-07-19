@@ -1,182 +1,280 @@
-# Domain-Independent Retrieval-Augmented Generation (RAG) with Citation Verifiability
+# 🛡️ Verifiable RAG Assistant
 
-A production-grade, secure, and domain-independent RAG application featuring lexical-semantic hybrid search, Cross-Encoder reranking, and an automated claim-level NLI grounding verification engine. Built entirely using open-source packages and local models, it supports zero-cost local deployment via **Ollama** and cloud deployment via **Groq**.
+> A production-ready Retrieval-Augmented Generation (RAG) system with **Groq-powered LLM inference**, **hybrid retrieval**, and **claim-level citation verification** for trustworthy AI-generated responses.
 
----
-
-## Key Features
-
-1. **Multi-Format Ingestion**: Ingests PDFs, DOCX, PPTXs, HTML pages, CSVs, JSONs, Markdown, and TXT files, preserving structure (page numbers, section headings) and metadata.
-2. **Hybrid Retrieval**: Combines semantic dense retrieval (cosine similarity via ChromaDB) with lexical sparse retrieval (BM25 Okapi) blended using Reciprocal Rank Fusion (RRF).
-3. **Cross-Encoder Reranking**: Re-orders fused candidates using `BAAI/bge-reranker-base` to optimize context windows and factual density.
-4. **LLM Provider Routing**: Fully configurable model routing between local **Ollama** (e.g. `qwen2.5:7b-instruct`) and cloud-hosted **Groq** APIs (e.g. `mixtral-8x7b-32768`).
-5. **Citation Verification Auditor**: Segments responses into claim sentences, evaluates semantic similarity against cited text, and runs NLI (Natural Language Inference) checks to classify claims as `SUPPORTED`, `UNSUPPORTED`, or `CONTRADICTED`.
-6. **Security Hardened**: IP-based rate limiting, CORS configuration, and file validation (mime-type, file extension, max 20MB file size limits).
-7. **Premium Streamlit Interface**: Visual chat interface highlighting grounded claims (Green), uncited statements (Yellow), and contradictions (Red) with an interactive popover source inspector.
-8. **DevOps & Production Ready**: Multi-stage non-root Docker builds, automated GitHub Actions CI/CD workflows, metrics monitoring, and performance latency logging.
+![Python](https://img.shields.io/badge/Python-3.12+-blue.svg)
+![FastAPI](https://img.shields.io/badge/FastAPI-Backend-009688)
+![Streamlit](https://img.shields.io/badge/Streamlit-Frontend-FF4B4B)
+![ChromaDB](https://img.shields.io/badge/ChromaDB-Vector%20Database-blueviolet)
+![Groq](https://img.shields.io/badge/Groq-LLM-orange)
+![License](https://img.shields.io/badge/License-MIT-green)
 
 ---
 
-## System Architecture
+## 📖 Overview
 
-```mermaid
-graph TD
-    %% Ingestion Pipeline
-    subgraph Ingestion [1. Ingestion & Preprocessing]
-        A[User Document] --> B{Format Router}
-        B -->|PDF| C[PyMuPDF Page Parser]
-        B -->|DOCX/PPTX| D[python-docx / pptx Parser]
-        B -->|MD/TXT/HTML| E[bs4 / built-in Parser]
-        B -->|CSV/JSON| F[pandas Parser]
-        C & D & E & F --> G[Section & Page Metadata Extractor]
-        G --> H[Recursive Metadata-Preserving Chunker]
-        H --> I[Embedding Generator: BAAI/bge-base-en-v1.5]
-        I --> J[(ChromaDB Vector Index)]
-        G --> K[(SQLite Metadata DB)]
-    end
+**Verifiable RAG Assistant** is a production-ready Retrieval-Augmented Generation (RAG) system that enables users to upload documents, build a searchable knowledge base, and receive AI-generated answers backed by verifiable citations.
 
-    %% Hybrid Retrieval
-    subgraph Retrieval [2. Hybrid Retrieval Engine]
-        Q[User Query] --> R[Dense Retrieval: Cosine Search]
-        Q --> S[Sparse Retrieval: BM25 Okapi]
-        R --> T[Reciprocal Rank Fusion RRF]
-        S --> T
-        T --> U[Cross-Encoder Reranker: BAAI/bge-reranker-base]
-        U --> V[Context Optimizer: Top K Chunks]
-    end
+Unlike conventional RAG systems, this application performs **claim-level citation verification**, ensuring that each generated statement is grounded in the retrieved source documents. It combines semantic search, hybrid retrieval, reranking, and automated grounding audits to improve transparency and trustworthiness.
 
-    %% Generation and Audit
-    subgraph Generation [3. Answer Generation & Verification]
-        V --> W[Context-Grounded Prompt]
-        Q --> W
-        W --> X{LLM Provider Router}
-        X -->|Ollama| Y[Local Qwen 2.5]
-        X -->|Groq| Z[Cloud Mixtral/Llama]
-        Y & Z --> AA[Grounded Answer with Bracket Citations]
-        AA --> AB[Citation Bracket Parser]
-        AB --> AC[Claims Sentence Segmenter]
-        AC --> AD[Claim Verification Module]
-        AD -->|Semantic Cosine Similarity| AE[Weighted Grounding Score]
-        AD -->|LLM NLI Entailment Check| AE
-        AE --> AF[Audited Answer Heatmap Streamlit UI]
-    end
+---
+
+## 📸 Application Preview
+
+![Application](assets/application.png)
+
+---
+
+# ✨ Features
+
+- 📄 Multi-format document ingestion (PDF, DOCX, PPTX, TXT, HTML, CSV, JSON, Markdown)
+- 🔍 Hybrid Retrieval (Semantic Search + BM25)
+- 🎯 Cross-Encoder reranking using BAAI reranker
+- 🤖 Groq-powered LLM inference (default)
+- 🖥️ Optional Ollama support for offline/local execution
+- 📚 Retrieval-Augmented Generation (RAG)
+- 🛡️ Claim-level citation verification
+- 📊 Grounding audit dashboard
+- ⚡ FastAPI backend
+- 🎨 Interactive Streamlit frontend
+- 🐳 Docker support
+- 📈 Health monitoring endpoint
+
+---
+
+# 🏗️ Architecture
+
+```text
+                 User
+                  │
+                  ▼
+          Streamlit Frontend
+                  │
+                  ▼
+            FastAPI Backend
+                  │
+      ┌───────────┼────────────┐
+      ▼           ▼            ▼
+ Document     Hybrid Search    LLM
+ Parsing    (Vector + BM25)   (Groq)
+      │           │            │
+      └───────────┼────────────┘
+                  ▼
+         Cross-Encoder Reranker
+                  │
+                  ▼
+        Citation Verification
+                  │
+                  ▼
+         Verified AI Response
 ```
 
 ---
 
-## Configuration Variables
+# 🛠️ Tech Stack
 
-Centralized configurations are stored and validated at startup in `app/config.py`. They can be overridden via environment variables or a `.env` file:
-
-| Variable | Description | Default |
-| :--- | :--- | :--- |
-| `LLM_PROVIDER` | Core LLM service router (`ollama` or `groq`) | `ollama` |
-| `GROQ_API_KEY` | Developer access token for Groq Cloud API | `""` |
-| `LLM_MODEL` | Selected LLM model name (inferred automatically if empty) | Mapped based on provider |
-| `OLLAMA_BASE_URL` | Local network connection URL for Ollama service | `http://localhost:11434` |
-| `ALLOWED_ORIGINS` | CORS headers allowed hosts (comma-separated list, or `*`) | `*` |
-| `RATE_LIMIT_PER_MINUTE` | In-memory API request rate limit count per IP per minute | `60` |
-| `MAX_UPLOAD_SIZE` | Maximum upload document size in bytes | `20971520` (20MB) |
-| `CHROMA_DB_DIR` | Directory to save ChromaDB persistent vectors | `./data/chroma_db` |
-| `SQLITE_DB_PATH` | Directory and filename for SQLite database | `./data/rag_system.db` |
-| `HF_HOME` | Target caching folder for model downloads | `./data/hf_cache` |
+| Component | Technology |
+|------------|------------|
+| Language | Python |
+| Backend | FastAPI |
+| Frontend | Streamlit |
+| LLM | Groq (default), Ollama (optional) |
+| Vector Database | ChromaDB |
+| Embedding Model | BAAI/bge-base-en-v1.5 |
+| Reranker | BAAI/bge-reranker-base |
+| Retrieval | Hybrid (Vector + BM25) |
+| Database | SQLite |
+| Document Parsing | PyMuPDF, python-docx, python-pptx, BeautifulSoup |
+| Deployment | Docker, Docker Compose |
 
 ---
 
-## Local Installation
+# 🚀 Local Installation
 
-### Prerequisites
-- Python 3.12 or 3.13 installed.
-- (Optional) [Ollama](https://ollama.com) running locally for offline execution:
-  ```bash
-  ollama pull qwen2.5:7b-instruct
-  ```
+## Prerequisites
 
-### Step 1: Clone and Configure
-1. Create a `.env` file in the project root:
-   ```bash
-   cp .env.example .env
-   ```
-2. Adjust settings in `.env` (e.g. set `LLM_PROVIDER=groq` and supply a `GROQ_API_KEY` to run without Ollama).
+- Python **3.12** (recommended)
+- A **Groq API Key**
 
-### Step 2: Install Dependencies
-Create a virtual environment and install packages:
+Create a Groq API key from:
+
+https://console.groq.com/
+
+---
+
+## 1. Clone the Repository
+
 ```bash
+git clone https://github.com/nivas0408/verifiable-rag-assistant.git
+
+cd verifiable-rag-assistant
+```
+
+---
+
+## 2. Configure Environment Variables
+
+Copy:
+
+```bash
+cp .env.example .env
+```
+
+Configure:
+
+```env
+LLM_PROVIDER=groq
+GROQ_API_KEY=YOUR_GROQ_API_KEY
+```
+
+> **Optional:** To run locally with Ollama instead of Groq:
+
+```env
+LLM_PROVIDER=ollama
+```
+
+---
+
+## 3. Create Virtual Environment
+
+### Windows
+
+```powershell
 python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
+venv\Scripts\activate
+```
+
+### Linux / macOS
+
+```bash
+python3 -m venv venv
+source venv/bin/activate
+```
+
+---
+
+## 4. Install Dependencies
+
+```bash
 pip install -r requirements.txt
 ```
 
-### Step 3: Run the Services
-1. **Start the FastAPI Backend**:
-   ```bash
-   uvicorn app.main:app --reload --port 8000
-   ```
-2. **Start the Streamlit Frontend**:
-   ```bash
-   streamlit run frontend/app.py --server.port 8501
-   ```
+---
 
-Open `http://localhost:8501` to access the chat workspace.
+## 5. Start the Backend
+
+```bash
+uvicorn app.main:app --reload
+```
+
+Backend:
+
+```
+http://localhost:8000
+```
+
+Swagger UI:
+
+```
+http://localhost:8000/docs
+```
 
 ---
 
-## Running with Docker (Production Grade)
+## 6. Start the Frontend
 
-The project includes a multi-stage `Dockerfile` and `docker-compose.yml` configured with CPU resource constraints, persistent volumes, and container health checks.
+```bash
+streamlit run frontend/app.py
+```
 
-To build and launch the containers:
+Frontend:
+
+```
+http://localhost:8501
+```
+
+---
+
+# 🐳 Docker
+
+Build and run:
+
 ```bash
 docker-compose up --build
 ```
 
-- **Streamlit Frontend**: `http://localhost:8501`
-- **FastAPI API Documentation**: `http://localhost:8000/docs`
-- **API Health Metrics**: `http://localhost:8000/health`
+Services:
+
+| Service | URL |
+|----------|-----|
+| Streamlit | http://localhost:8501 |
+| FastAPI | http://localhost:8000 |
+| Swagger | http://localhost:8000/docs |
+| Health API | http://localhost:8000/health |
 
 ---
 
-## Production Deployment Guide
+# 🌐 Deployment
 
-### Backend: FastAPI on Render
-1. Create a new **Web Service** on Render and link it to your GitHub repository.
-2. Configure environment settings:
-   - **Environment**: `Python`
-   - **Build Command**: `pip install -r requirements.txt`
-   - **Start Command**: `uvicorn app.main:app --host 0.0.0.0 --port $PORT`
-3. Add the following **Environment Variables** in Render's dashboard:
-   - `LLM_PROVIDER=groq` (Recommended for cloud to bypass local Ollama requirements)
-   - `GROQ_API_KEY` = *[Your Groq Key]*
-   - `ALLOWED_ORIGINS` = *[Your Streamlit Frontend URL]*
-   - `LOG_LEVEL=INFO`
-4. Attach a **Persistent Disk** on Render mounted at `/workspace/data` to ensure that SQLite databases, ChromaDB vectors, and model weights are retained across deploys. Set `CHROMA_DB_DIR=/workspace/data/chroma_db` and `SQLITE_DB_PATH=/workspace/data/rag_system.db`.
+## Backend (Render)
 
-### Frontend: Streamlit Cloud
-1. Deploy a new application on [Streamlit Community Cloud](https://share.streamlit.io/).
-2. Link the repository, select branch, and set main file path to `frontend/app.py`.
-3. In **Advanced Settings**, add the environment variable:
-   - `BACKEND_URL` = *[Your Render Web Service URL]*
-   - `FRONTEND_TIMEOUT` = `60.0`
+Build Command
+
+```bash
+pip install -r requirements.txt
+```
+
+Start Command
+
+```bash
+uvicorn app.main:app --host 0.0.0.0 --port $PORT
+```
+
+Environment Variables
+
+```env
+LLM_PROVIDER=groq
+GROQ_API_KEY=YOUR_GROQ_API_KEY
+LOG_LEVEL=INFO
+```
 
 ---
 
-## Monitoring and Metrics
+## Frontend (Render or Streamlit Community Cloud)
 
-Access `/health` on the backend API to query live system statistics:
+Environment Variables
+
+```env
+BACKEND_URL=https://your-backend-url.onrender.com
+FRONTEND_TIMEOUT=60
+```
+
+---
+
+# 📡 API Endpoints
+
+| Endpoint | Description |
+|-----------|-------------|
+| `/docs` | Swagger API Documentation |
+| `/health` | System Health |
+| `/upload` | Upload Documents |
+| `/query` | Ask Questions |
+
+---
+
+# 📊 Health Metrics
+
+Example:
+
 ```json
 {
   "status": "healthy",
   "llm_available": true,
-  "uptime_seconds": 128.45,
   "metrics": {
     "document_count": 2,
     "chunk_count": 86,
-    "chroma_vector_count": 86,
-    "sqlite_db_size_bytes": 48128,
     "settings": {
-      "llm_provider": "GROQ",
-      "llm_model": "mixtral-8x7b-32768",
-      "rate_limit_limit": 60
+      "llm_provider": "GROQ"
     }
   }
 }
@@ -184,9 +282,32 @@ Access `/health` on the backend API to query live system statistics:
 
 ---
 
-## Future Improvements
+# 🔮 Future Improvements
 
-1. **Visual Semantic Chunking**: Build an interface to inspect how documents are chunked and highlight embeddings in a 2D space.
-2. **External Vector Backup**: Integrate Amazon S3 or Google Cloud Storage to back up vector indexes and SQL metadata.
-3. **Dynamic Hybrid Search Tuning**: Expose sliders in Streamlit to dynamically adjust retrieval weights (`HYBRID_ALPHA`) and reranking thresholds.
-4. **Enhanced Document Layout Parsing**: Integrate OCR models (like PyMuPDF's layout features or Unstructured) to parse tables and image diagrams within papers.
+- [ ] Streaming LLM responses
+- [ ] OCR support for scanned PDFs
+- [ ] Authentication & user accounts
+- [ ] Cloud vector database support
+- [ ] Semantic chunk visualization
+- [ ] Adjustable hybrid retrieval weights
+- [ ] Multi-user document management
+
+---
+
+# 📄 License
+
+This project is licensed under the **MIT License**.
+
+---
+
+# 👨‍💻 Author
+
+**Mulluri Nivas**
+
+- GitHub: https://github.com/nivas0408
+- LinkedIn: https://www.linkedin.com/in/mulluri-nivas-09053a31a/
+
+
+---
+
+⭐ If you found this project useful, consider giving it a **Star** on GitHub!
