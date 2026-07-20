@@ -39,7 +39,6 @@ class ChromaManager:
                 metadata={"hnsw:space": "cosine"}
             )
             # Pre-load embedding model
-            self.embedding_model = EmbeddingModelSingleton.get_model()
         except Exception as e:
             logger.critical(f"ChromaDB initialization failed: {e}")
             raise
