@@ -5,7 +5,12 @@ import pandas as pd
 from typing import Optional, List, Dict, Any
 
 # Config
-BACKEND_URL = os.getenv("https://verifiable-rag-assistant-production.up.railway.app/")
+import os
+
+BACKEND_URL = os.getenv(
+    "BACKEND_URL",
+    "https://YOUR-BACKEND-DOMAIN.up.railway.app"
+)
 # Page Configuration
 st.set_page_config(
     page_title="Verifiable RAG Assistant",
