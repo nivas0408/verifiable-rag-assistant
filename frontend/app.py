@@ -9,7 +9,7 @@ import os
 
 BACKEND_URL = os.getenv(
     "BACKEND_URL",
-    "https://YOUR-BACKEND-DOMAIN.up.railway.app"
+    "https://verifiable-rag-assistant-production.up.railway.app"
 )
 # Page Configuration
 st.set_page_config(
