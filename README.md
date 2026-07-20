@@ -1,6 +1,6 @@
 # 🛡️ Verifiable RAG Assistant
 
-> A production-ready Retrieval-Augmented Generation (RAG) system with **Groq-powered LLM inference**, **hybrid retrieval**, and **claim-level citation verification** for trustworthy AI-generated responses.
+> A production-ready Retrieval-Augmented Generation (RAG) system that combines **Hybrid Retrieval**, **Groq-powered LLM inference**, and **Claim-Level Citation Verification** to generate trustworthy, source-grounded AI responses.
 
 ![Python](https://img.shields.io/badge/Python-3.12+-blue.svg)
 ![FastAPI](https://img.shields.io/badge/FastAPI-Backend-009688)
@@ -11,17 +11,19 @@
 
 ---
 
-## 📖 Overview
+# 📖 Overview
 
-**Verifiable RAG Assistant** is a production-ready Retrieval-Augmented Generation (RAG) system that enables users to upload documents, build a searchable knowledge base, and receive AI-generated answers backed by verifiable citations.
+**Verifiable RAG Assistant** is an AI-powered document question-answering system that allows users to upload documents, build a searchable knowledge base, and receive accurate answers backed by verifiable citations.
 
-Unlike conventional RAG systems, this application performs **claim-level citation verification**, ensuring that each generated statement is grounded in the retrieved source documents. It combines semantic search, hybrid retrieval, reranking, and automated grounding audits to improve transparency and trustworthiness.
+Unlike traditional RAG systems, this application performs **claim-level citation verification**, ensuring that generated responses are supported by retrieved source documents. By combining semantic search, keyword search (BM25), cross-encoder reranking, and automated grounding audits, the system improves transparency, reliability, and trust in AI-generated responses.
 
 ---
 
-## 📸 Application Preview
+# 📸 Application Preview
 
-![Application](assets/application.png)
+<p align="center">
+  <img src="assets/application.png" width="100%">
+</p>
 
 ---
 
@@ -29,44 +31,108 @@ Unlike conventional RAG systems, this application performs **claim-level citatio
 
 - 📄 Multi-format document ingestion (PDF, DOCX, PPTX, TXT, HTML, CSV, JSON, Markdown)
 - 🔍 Hybrid Retrieval (Semantic Search + BM25)
-- 🎯 Cross-Encoder reranking using BAAI reranker
-- 🤖 Groq-powered LLM inference (default)
-- 🖥️ Optional Ollama support for offline/local execution
+- 🎯 Cross-Encoder reranking using **BAAI BGE Reranker**
+- 🤖 Groq-powered LLM inference
+- 💻 Optional Ollama support for local/offline inference
 - 📚 Retrieval-Augmented Generation (RAG)
-- 🛡️ Claim-level citation verification
-- 📊 Grounding audit dashboard
-- ⚡ FastAPI backend
-- 🎨 Interactive Streamlit frontend
-- 🐳 Docker support
-- 📈 Health monitoring endpoint
+- 🛡️ Claim-Level Citation Verification
+- 📊 Grounding Audit Dashboard
+- ⚡ FastAPI REST API
+- 🎨 Interactive Streamlit interface
+- 📈 Health Monitoring Endpoint
+
+---
+
+# 🔄 How It Works
+
+```text
+Upload Documents
+        │
+        ▼
+Document Parsing
+        │
+        ▼
+Text Chunking
+        │
+        ▼
+BAAI Embedding Model
+        │
+        ▼
+ChromaDB Vector Store
+        │
+        ▼
+Hybrid Retrieval
+(Vector Search + BM25)
+        │
+        ▼
+Cross-Encoder Reranker
+        │
+        ▼
+Groq LLM
+        │
+        ▼
+Citation Verification
+        │
+        ▼
+Verified AI Response
+```
 
 ---
 
 # 🏗️ Architecture
 
 ```text
-                 User
-                  │
-                  ▼
+                  User
+                   │
+                   ▼
           Streamlit Frontend
-                  │
-                  ▼
+                   │
+                   ▼
             FastAPI Backend
-                  │
-      ┌───────────┼────────────┐
-      ▼           ▼            ▼
- Document     Hybrid Search    LLM
- Parsing    (Vector + BM25)   (Groq)
-      │           │            │
-      └───────────┼────────────┘
-                  ▼
-         Cross-Encoder Reranker
-                  │
-                  ▼
-        Citation Verification
-                  │
-                  ▼
-         Verified AI Response
+                   │
+       ┌───────────┼────────────┐
+       ▼           ▼            ▼
+ Document     Hybrid Search     LLM
+ Parsing    (Vector + BM25)    (Groq)
+       │           │            │
+       └───────────┼────────────┘
+                   ▼
+        Cross-Encoder Reranker
+                   │
+                   ▼
+       Citation Verification
+                   │
+                   ▼
+        Verified AI Response
+```
+
+---
+
+# 📂 Project Structure
+
+```text
+Verifiable-RAG-Assistant/
+│
+├── app/
+│   ├── core/
+│   ├── config.py
+│   ├── database.py
+│   └── main.py
+│
+├── frontend/
+│   └── app.py
+│
+├── assets/
+│
+├── data/
+│   └── .gitkeep
+│
+├── tests/
+│
+├── requirements.txt
+├── README.md
+├── LICENSE
+└── .env.example
 ```
 
 ---
@@ -78,29 +144,17 @@ Unlike conventional RAG systems, this application performs **claim-level citatio
 | Language | Python |
 | Backend | FastAPI |
 | Frontend | Streamlit |
-| LLM | Groq (default), Ollama (optional) |
+| LLM | Groq (Default), Ollama (Optional) |
 | Vector Database | ChromaDB |
 | Embedding Model | BAAI/bge-base-en-v1.5 |
 | Reranker | BAAI/bge-reranker-base |
-| Retrieval | Hybrid (Vector + BM25) |
+| Retrieval | Hybrid Retrieval (Semantic + BM25) |
 | Database | SQLite |
 | Document Parsing | PyMuPDF, python-docx, python-pptx, BeautifulSoup |
-| Deployment | Docker, Docker Compose |
 
 ---
 
-# 🚀 Local Installation
-
-## Prerequisites
-
-- Python **3.12** (recommended)
-- A **Groq API Key**
-
-Create a Groq API key from:
-
-https://console.groq.com/
-
----
+# 🚀 Installation
 
 ## 1. Clone the Repository
 
@@ -112,48 +166,25 @@ cd verifiable-rag-assistant
 
 ---
 
-## 2. Configure Environment Variables
-
-Copy:
-
-```bash
-cp .env.example .env
-```
-
-Configure:
-
-```env
-LLM_PROVIDER=groq
-GROQ_API_KEY=YOUR_GROQ_API_KEY
-```
-
-> **Optional:** To run locally with Ollama instead of Groq:
-
-```env
-LLM_PROVIDER=ollama
-```
-
----
-
-## 3. Create Virtual Environment
+## 2. Create a Virtual Environment
 
 ### Windows
 
 ```powershell
-python -m venv venv
-venv\Scripts\activate
+python -m venv .venv
+.venv\Scripts\activate
 ```
 
 ### Linux / macOS
 
 ```bash
-python3 -m venv venv
-source venv/bin/activate
+python3 -m venv .venv
+source .venv/bin/activate
 ```
 
 ---
 
-## 4. Install Dependencies
+## 3. Install Dependencies
 
 ```bash
 pip install -r requirements.txt
@@ -161,7 +192,36 @@ pip install -r requirements.txt
 
 ---
 
-## 5. Start the Backend
+## 4. Configure Environment Variables
+
+Copy:
+
+```text
+.env.example
+```
+
+to
+
+```text
+.env
+```
+
+Example:
+
+```env
+LLM_PROVIDER=groq
+GROQ_API_KEY=YOUR_GROQ_API_KEY
+```
+
+Optional (Offline Mode):
+
+```env
+LLM_PROVIDER=ollama
+```
+
+---
+
+## 5. Run the Backend
 
 ```bash
 uvicorn app.main:app --reload
@@ -181,7 +241,9 @@ http://localhost:8000/docs
 
 ---
 
-## 6. Start the Frontend
+## 6. Run the Frontend
+
+Open another terminal:
 
 ```bash
 streamlit run frontend/app.py
@@ -195,76 +257,18 @@ http://localhost:8501
 
 ---
 
-# 🐳 Docker
-
-Build and run:
-
-```bash
-docker-compose up --build
-```
-
-Services:
-
-| Service | URL |
-|----------|-----|
-| Streamlit | http://localhost:8501 |
-| FastAPI | http://localhost:8000 |
-| Swagger | http://localhost:8000/docs |
-| Health API | http://localhost:8000/health |
-
----
-
-# 🌐 Deployment
-
-## Backend (Render)
-
-Build Command
-
-```bash
-pip install -r requirements.txt
-```
-
-Start Command
-
-```bash
-uvicorn app.main:app --host 0.0.0.0 --port $PORT
-```
-
-Environment Variables
-
-```env
-LLM_PROVIDER=groq
-GROQ_API_KEY=YOUR_GROQ_API_KEY
-LOG_LEVEL=INFO
-```
-
----
-
-## Frontend (Render or Streamlit Community Cloud)
-
-Environment Variables
-
-```env
-BACKEND_URL=https://your-backend-url.onrender.com
-FRONTEND_TIMEOUT=60
-```
-
----
-
 # 📡 API Endpoints
 
 | Endpoint | Description |
 |-----------|-------------|
-| `/docs` | Swagger API Documentation |
-| `/health` | System Health |
+| `/docs` | Swagger Documentation |
+| `/health` | Health Check |
 | `/upload` | Upload Documents |
-| `/query` | Ask Questions |
+| `/query` | Query the Knowledge Base |
 
 ---
 
-# 📊 Health Metrics
-
-Example:
+# 📊 Example Health Response
 
 ```json
 {
@@ -282,15 +286,26 @@ Example:
 
 ---
 
-# 🔮 Future Improvements
+# 🎯 Future Enhancements
 
 - [ ] Streaming LLM responses
 - [ ] OCR support for scanned PDFs
-- [ ] Authentication & user accounts
-- [ ] Cloud vector database support
+- [ ] Authentication & user management
+- [ ] Cloud vector database integration
 - [ ] Semantic chunk visualization
-- [ ] Adjustable hybrid retrieval weights
-- [ ] Multi-user document management
+- [ ] Configurable hybrid retrieval weights
+- [ ] Multi-user workspaces
+
+---
+
+# 🤝 Contributing
+
+Contributions are welcome!
+
+1. Fork the repository.
+2. Create a feature branch.
+3. Commit your changes.
+4. Submit a Pull Request.
 
 ---
 
@@ -307,7 +322,6 @@ This project is licensed under the **MIT License**.
 - GitHub: https://github.com/nivas0408
 - LinkedIn: https://www.linkedin.com/in/mulluri-nivas-09053a31a/
 
-
 ---
 
-⭐ If you found this project useful, consider giving it a **Star** on GitHub!
+⭐ **If you found this project helpful, consider giving it a Star!**
