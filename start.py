@@ -1,31 +1,30 @@
-print("=" * 60)
-print("MY START.PY IS RUNNING")
-print("=" * 60)
-
 import subprocess
 import sys
 import os
 import time
+
 def main():
-    # 1. Start FastAPI in the background on localhost:8000
-    print("Starting FastAPI backend internally on 127.0.0.1:8000...")
+    port = os.getenv("PORT", "8000")
+    print(f"Starting FastAPI backend publicly on 0.0.0.0:{port}...")
     api_process = subprocess.Popen([
         sys.executable, "-m", "uvicorn", "app.main:app",
-        "--host", "127.0.0.1", "--port", "8000"
+        "--host", "0.0.0.0", "--port", port
     ])
 
-    # Give Uvicorn a couple of seconds to bind to port 8000
+    # Give Uvicorn a couple of seconds to bind
     time.sleep(3)
 
-    # 2. Start Streamlit on the public port (supplied by Render as $PORT, default 8501)
-    port = os.getenv("PORT", "8501")
-    print(f"Starting Streamlit frontend on 0.0.0.0:{port}...")
+    # Start Streamlit frontend internally on 127.0.0.1:8501
+    print("Starting Streamlit frontend internally on 127.0.0.1:8501...")
+    env = os.environ.copy()
+    env["BACKEND_URL"] = f"http://127.0.0.1:{port}"
     streamlit_process = subprocess.Popen([
         sys.executable, "-m", "streamlit", "run", "frontend/app.py",
-        "--server.port", port, "--server.address", "0.0.0.0"
-    ])
+        "--server.port", "8501",
+        "--server.address", "127.0.0.1"
+    ], env=env)
 
-    # 3. Monitor processes
+    # Monitor processes
     try:
         while True:
             # Check if either process has exited

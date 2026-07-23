@@ -3,7 +3,8 @@ import os
 from pathlib import Path
 
 def run_verification():
-    backend_url = "http://127.0.0.1:8000"
+    port = os.getenv("PORT", "8000")
+    backend_url = f"http://127.0.0.1:{port}"
     print(f"Verifying backend connectivity at: {backend_url}...")
     
     # 1. Health check

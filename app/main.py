@@ -5,10 +5,13 @@ import shutil
 import logging
 from pathlib import Path
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, UploadFile, File, HTTPException, status
+from fastapi import FastAPI, UploadFile, File, HTTPException, status, Request, Response, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from typing import List, Dict, Any, Optional
+import httpx
+import websockets
+import asyncio
 
 from app.config import settings
 from app.core.security import RateLimitMiddleware, validate_file_metadata
@@ -462,3 +465,84 @@ async def health_check():
             }
         }
     }
+
+# ==============================================================================
+# Unified Single-Port Proxy Routing to Streamlit
+# ==============================================================================
+
+@app.websocket("/_stcore/stream")
+async def proxy_websocket(websocket: WebSocket):
+    """
+    Reverse proxy connection to Streamlit's internal WebSocket endpoint.
+    """
+    await websocket.accept()
+    try:
+        async with websockets.connect("ws://127.0.0.1:8501/_stcore/stream") as target_ws:
+            async def forward_client_to_target():
+                try:
+                    while True:
+                        message = await websocket.receive()
+                        if "text" in message:
+                            await target_ws.send(message["text"])
+                        elif "bytes" in message:
+                            await target_ws.send(message["bytes"])
+                except Exception:
+                    pass
+
+            async def forward_target_to_client():
+                try:
+                    while True:
+                        data = await target_ws.recv()
+                        if isinstance(data, str):
+                            await websocket.send_text(data)
+                        else:
+                            await websocket.send_bytes(data)
+                except Exception:
+                    pass
+
+            await asyncio.gather(
+                forward_client_to_target(),
+                forward_target_to_client()
+            )
+    except Exception as e:
+        logger.error(f"WebSocket reverse proxy connection error: {e}")
+    finally:
+        try:
+            await websocket.close()
+        except Exception:
+            pass
+
+@app.api_route("/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "HEAD", "PATCH"])
+async def proxy_http(request: Request, path: str):
+    """
+    Reverse proxy HTTP request to Streamlit's internal web server.
+    """
+    url = f"http://127.0.0.1:8501/{path}"
+    method = request.method
+    params = request.query_params
+    headers = {k: v for k, v in request.headers.items() if k.lower() not in ["host", "connection", "upgrade"]}
+    body = await request.body()
+
+    try:
+        async with httpx.AsyncClient() as client:
+            resp = await client.request(
+                method=method,
+                url=url,
+                params=params,
+                headers=headers,
+                content=body,
+                timeout=60.0
+            )
+            
+            # Filter headers to prevent response compression or mismatch errors
+            excluded_headers = ["content-encoding", "content-length", "transfer-encoding", "connection"]
+            resp_headers = {k: v for k, v in resp.headers.items() if k.lower() not in excluded_headers}
+            
+            return Response(
+                content=resp.content,
+                status_code=resp.status_code,
+                headers=resp_headers
+            )
+    except Exception as e:
+        logger.error(f"HTTP reverse proxy error for path /{path}: {e}")
+        return Response(content="UI Gateway Timeout / Server Error", status_code=502)
