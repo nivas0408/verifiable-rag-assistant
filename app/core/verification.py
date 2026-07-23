@@ -20,10 +20,20 @@ def cosine_similarity(v1: np.ndarray, v2: np.ndarray) -> float:
 
 class CitationVerifier:
     def __init__(self):
-        self.embedding_model = EmbeddingModelSingleton.get_model()
+        self._embedding_model = None
         self.provider = settings.LLM_PROVIDER
         self.model = settings.LLM_MODEL
         logger.info(f"CitationVerifier initialized (Provider: {self.provider.upper()}, Model: {self.model})")
+
+    @property
+    def embedding_model(self):
+        if self._embedding_model is None:
+            return EmbeddingModelSingleton.get_model()
+        return self._embedding_model
+
+    @embedding_model.setter
+    def embedding_model(self, value):
+        self._embedding_model = value
 
     def _nli_check_llm(self, claim: str, passage: str) -> str:
         """Runs an NLI logic check via the configured LLM provider comparing the claim against the passage."""

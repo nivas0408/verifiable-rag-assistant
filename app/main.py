@@ -122,11 +122,39 @@ class SystemHealthResponse(BaseModel):
     uptime_seconds: float = Field(..., description="System uptime.")
     metrics: Dict[str, Any] = Field(..., description="Dynamic document and storage metrics.")
 
-# Initialize pipeline modules
-chroma_manager = ChromaManager()
-search_engine = HybridSearchEngine(chroma_manager)
-generator = AnswerGenerator()
-verifier = CitationVerifier()
+# Lazy-loaded singletons to prevent high startup RAM and OOM on Render
+_chroma_manager = None
+_search_engine = None
+_generator = None
+_verifier = None
+
+def get_chroma_manager() -> ChromaManager:
+    global _chroma_manager
+    if _chroma_manager is None:
+        logger.info("Lazy-initializing ChromaManager...")
+        _chroma_manager = ChromaManager()
+    return _chroma_manager
+
+def get_search_engine() -> HybridSearchEngine:
+    global _search_engine
+    if _search_engine is None:
+        logger.info("Lazy-initializing HybridSearchEngine...")
+        _search_engine = HybridSearchEngine(get_chroma_manager())
+    return _search_engine
+
+def get_generator() -> AnswerGenerator:
+    global _generator
+    if _generator is None:
+        logger.info("Lazy-initializing AnswerGenerator...")
+        _generator = AnswerGenerator()
+    return _generator
+
+def get_verifier() -> CitationVerifier:
+    global _verifier
+    if _verifier is None:
+        logger.info("Lazy-initializing CitationVerifier...")
+        _verifier = CitationVerifier()
+    return _verifier
 
 @app.post(
     "/upload", 
@@ -189,7 +217,7 @@ async def upload_document(file: UploadFile = File(...)):
         chunks = chunker.chunk_documents(documents)
         
         # ChromaDB indexing
-        chroma_manager.add_chunks(doc_id, chunks)
+        get_chroma_manager().add_chunks(doc_id, chunks)
         
         # SQLite Registration
         insert_document(
@@ -243,7 +271,7 @@ async def query_system(payload: QueryRequest):
 
     # 1. Retrieval
     try:
-        reranked_chunks = search_engine.retrieve_and_rerank(query_text)
+        reranked_chunks = get_search_engine().retrieve_and_rerank(query_text)
     except Exception as e:
         logger.error(f"Retrieval engine execution failure: {e}", exc_info=True)
         raise HTTPException(
@@ -263,7 +291,7 @@ async def query_system(payload: QueryRequest):
         
     # 2. Answer Generation
     try:
-        answer, is_mock = generator.generate_answer(query_text, reranked_chunks)
+        answer, is_mock = get_generator().generate_answer(query_text, reranked_chunks)
     except Exception as e:
         logger.error(f"Generation engine execution failure: {e}", exc_info=True)
         raise HTTPException(
@@ -272,11 +300,11 @@ async def query_system(payload: QueryRequest):
         )
         
     # 3. Citation Parsing
-    parsed_claims = generator.parse_citations(answer, reranked_chunks)
+    parsed_claims = get_generator().parse_citations(answer, reranked_chunks)
     
     # 4. Citation Verification
     try:
-        verification_results = verifier.verify_answer(parsed_claims)
+        verification_results = get_verifier().verify_answer(parsed_claims)
     except Exception as e:
         logger.error(f"Verification engine execution failure: {e}", exc_info=True)
         raise HTTPException(
@@ -364,7 +392,7 @@ async def remove_document(doc_id: str):
         
     # Delete from ChromaDB
     try:
-        chroma_manager.delete_document_chunks(doc_id)
+        get_chroma_manager().delete_document_chunks(doc_id)
     except Exception as e:
         logger.error(f"Failed to purge ChromaDB vectors for doc ID {doc_id}: {e}")
         
@@ -414,7 +442,7 @@ async def health_check():
         
     chroma_count = 0
     try:
-        chroma_count = chroma_manager.collection.count()
+        chroma_count = get_chroma_manager().collection.count()
     except Exception:
         pass
         
