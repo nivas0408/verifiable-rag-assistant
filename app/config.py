@@ -8,7 +8,7 @@ from pydantic_settings import BaseSettings
 # Define Settings Class
 class Settings(BaseSettings):
     # LLM Settings
-    LLM_PROVIDER: str = "ollama"  # "ollama" or "groq"
+    LLM_PROVIDER: str = "groq"  # "ollama" or "groq"
     GROQ_API_KEY: str = ""
     LLM_MODEL: str = ""           # Automatically mapped based on provider if left empty
     
