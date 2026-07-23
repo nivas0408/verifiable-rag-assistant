@@ -9,7 +9,7 @@ import os
 
 BACKEND_URL = os.getenv(
     "BACKEND_URL",
-    "https://verifiable-rag-assistant-production.up.railway.app"
+    "http://127.0.0.1:8000"
 )
 # Page Configuration
 st.set_page_config(
