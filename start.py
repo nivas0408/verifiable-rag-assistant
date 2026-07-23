@@ -1,8 +1,11 @@
+print("=" * 60)
+print("MY START.PY IS RUNNING")
+print("=" * 60)
+
 import subprocess
 import sys
 import os
 import time
-
 def main():
     # 1. Start FastAPI in the background on localhost:8000
     print("Starting FastAPI backend internally on 127.0.0.1:8000...")
