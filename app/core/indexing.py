@@ -17,12 +17,17 @@ class EmbeddingModelSingleton:
             logger.info(f"Initializing Embedding model: {model_name} (Cache: {settings.HF_HOME})")
             start = time.time()
             try:
-                cls._instance = SentenceTransformer(model_name)
+                try:
+                    import torch
+                    torch.set_num_threads(1)
+                except ImportError:
+                    pass
+                cls._instance = SentenceTransformer(model_name, device="cpu")
                 logger.info(f"Embedding model loaded successfully in {time.time() - start:.2f}s")
             except Exception as e:
                 logger.error(f"Error loading embedding model {model_name}: {e}. Falling back to 'all-MiniLM-L6-v2'")
                 try:
-                    cls._instance = SentenceTransformer("all-MiniLM-L6-v2")
+                    cls._instance = SentenceTransformer("all-MiniLM-L6-v2", device="cpu")
                     logger.info("Fallback 'all-MiniLM-L6-v2' model loaded successfully.")
                 except Exception as fallback_err:
                     logger.critical(f"Failed to load fallback embedding model: {fallback_err}")

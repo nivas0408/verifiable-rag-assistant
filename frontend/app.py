@@ -343,10 +343,19 @@ if st.session_state.last_query_result:
             if res.get("chunks"):
                 for idx, chunk in enumerate(res["chunks"], 1):
                     meta = chunk["metadata"]
-                    st.markdown(f"**[{idx}] {meta.get('source')} (Page {meta.get('page')}, Section '{meta.get('section')}')**")
+
+                    st.markdown(
+                        f"**[{idx}] {meta.get('source')} (Page {meta.get('page')}, Section '{meta.get('section')}')**"
+                    )
                     st.markdown(f"*{chunk['text']}*")
-                    if "rerank_score" in chunk:
-                        st.caption(f"Cross-Encoder Score: {chunk['rerank_score']:.4f}")
+
+                    rerank_score = chunk.get("rerank_score")
+
+                    if rerank_score is not None:
+                        st.caption(f"Cross-Encoder Score: {rerank_score:.4f}")
+                    else:
+                        st.caption("Cross-Encoder: Disabled")
+
                     st.markdown("---")
             else:
                 st.write("No chunks retrieved.")
@@ -435,7 +444,13 @@ if st.session_state.last_query_result:
                             passage_text = res["chunks"][source_idx]["text"]
                             
                         st.info(f"**Verifiable Passage:**\n\n\"{passage_text}\"")
-                        st.caption(f"Semantic Alignment: {best_cit['similarity_score']:.4f} • NLI Check: {best_cit['nli_status']}")
+                        similarity = best_cit.get("similarity_score")
+                        nli_status = best_cit.get("nli_status", "Unknown")
+
+                        if similarity is not None:
+                            st.caption(f"Semantic Alignment: {similarity:.4f} • NLI Check: {nli_status}")
+                        else:
+                            st.caption(f"Semantic Alignment: N/A • NLI Check: {nli_status}")
                     else:
                         st.warning("No citation marker found in the response for this claim. This statement was produced without explicit grounding.")
 

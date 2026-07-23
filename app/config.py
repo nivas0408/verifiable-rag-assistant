@@ -8,13 +8,13 @@ from pydantic_settings import BaseSettings
 # Define Settings Class
 class Settings(BaseSettings):
     # LLM Settings
-    LLM_PROVIDER: str = "groq"  # "ollama" or "groq"
+    LLM_PROVIDER: str = ""        # Set dynamically in validator if left empty
     GROQ_API_KEY: str = ""
     LLM_MODEL: str = ""           # Automatically mapped based on provider if left empty
     
     # Embedding & Reranker Models
-    EMBEDDING_MODEL: str = "BAAI/bge-base-en-v1.5"
-    RERANKER_MODEL: str = "BAAI/bge-reranker-base"
+    EMBEDDING_MODEL: str = "all-MiniLM-L6-v2"
+    RERANKER_MODEL: str = ""      # Disabled by default for low memory (set to BAAI/bge-reranker-base if needed)
     
     # Ollama Specifics
     OLLAMA_BASE_URL: str = "http://localhost:11434"
@@ -65,6 +65,8 @@ class Settings(BaseSettings):
             directory.mkdir(parents=True, exist_ok=True)
             
         # Clean LLM Provider
+        if not self.LLM_PROVIDER.strip():
+            self.LLM_PROVIDER = "groq" if self.GROQ_API_KEY.strip() else "ollama"
         self.LLM_PROVIDER = self.LLM_PROVIDER.lower().strip()
         if self.LLM_PROVIDER not in ["ollama", "groq"]:
             raise ValueError(f"Unsupported LLM_PROVIDER: {self.LLM_PROVIDER}. Must be 'ollama' or 'groq'.")

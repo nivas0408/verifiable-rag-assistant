@@ -4,6 +4,7 @@ import logging
 from typing import List, Dict, Any, Optional
 
 from rank_bm25 import BM25Okapi
+from sentence_transformers import CrossEncoder
 from app.config import settings
 from app.core.indexing import ChromaManager
 
@@ -11,14 +12,29 @@ logger = logging.getLogger("rag_system.retrieval")
 
 
 class RerankerModelSingleton:
-    """
-    Reranker disabled for low-memory Railway deployment.
-    """
+    _instance: Optional[CrossEncoder] = None
 
     @classmethod
-    def get_model(cls):
-        logger.warning("CrossEncoder reranker disabled for Railway deployment.")
-        return None
+    def get_model(cls) -> Optional[CrossEncoder]:
+        if cls._instance is None:
+            model_name = settings.RERANKER_MODEL
+            if not model_name or not model_name.strip():
+                logger.info("Reranker is disabled (model name is empty).")
+                return None
+            logger.info(f"Initializing CrossEncoder reranker: {model_name}")
+            start = time.time()
+            try:
+                try:
+                    import torch
+                    torch.set_num_threads(1)
+                except ImportError:
+                    pass
+                cls._instance = CrossEncoder(model_name, device="cpu")
+                logger.info(f"Reranker model loaded successfully in {time.time() - start:.2f}s")
+            except Exception as e:
+                logger.error(f"Error loading reranker model {model_name}: {e}. Reranking disabled.")
+                cls._instance = None
+        return cls._instance
 
 
 def tokenize(text: str) -> List[str]:
@@ -157,10 +173,8 @@ class HybridSearchEngine:
 
     def retrieve_and_rerank(self, query: str) -> List[Dict[str, Any]]:
         """
-        CrossEncoder disabled.
-        Returns top RRF results directly.
+        Retrieves candidate chunks via hybrid search, and reranks them using CrossEncoder if enabled.
         """
-
         candidates = self.retrieve(
             query,
             top_k_dense=settings.RETRIEVAL_TOP_K,
@@ -169,8 +183,21 @@ class HybridSearchEngine:
         if not candidates:
             return []
 
-        logger.info(
-            "Returning RRF results without CrossEncoder reranking."
-        )
+        reranker = RerankerModelSingleton.get_model()
+        if reranker is None:
+            logger.info("Returning RRF results without CrossEncoder reranking.")
+            return candidates[: settings.RERANK_TOP_K]
 
-        return candidates[: settings.RERANK_TOP_K]
+        pairs = [(query, chunk["text"]) for chunk in candidates]
+        logger.info(f"Reranking {len(candidates)} candidates using Cross-Encoder...")
+        start_rerank = time.time()
+        try:
+            rerank_scores = reranker.predict(pairs)
+            for idx, score in enumerate(rerank_scores):
+                candidates[idx]["rerank_score"] = float(score)
+            reranked = sorted(candidates, key=lambda x: x["rerank_score"], reverse=True)
+            logger.info(f"Cross-Encoder reranking latency: {time.time() - start_rerank:.4f}s")
+            return reranked[: settings.RERANK_TOP_K]
+        except Exception as e:
+            logger.error(f"Reranking error: {e}. Returning un-reranked RRF candidates.")
+            return candidates[: settings.RERANK_TOP_K]
